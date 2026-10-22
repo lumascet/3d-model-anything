@@ -1,0 +1,27 @@
+name: Build unsigned IPA
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - name: Select newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+      - name: Build
+        working-directory: apps/house-capture
+        run: |
+          xcodegen generate
+          xcodebuild -project HouseCapture.xcodeproj -scheme HouseCapture \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/HouseCapture.app Payload/
+          zip -qr HouseCapture.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HouseCapture-ipa
+          path: apps/house-capture/HouseCapture.ipa
